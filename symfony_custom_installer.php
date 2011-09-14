@@ -44,6 +44,8 @@ while ($plugin = $this->ask('To install another plugin, please enter the name.')
   }
 }
 
+
+
 /**
  * Initialize git
  */
@@ -53,6 +55,38 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
   {
     $this->getFilesystem()->execute('git init');
   }
+}
+
+/**
+ *  Submodule File
+ *  submodules.php should contain an array as such:
+ * 
+ *  $submodules = array(
+ * 	'localLocation' => 'repoLocation'
+ *  );
+ */
+if (file_exists("submodules.php")) 
+{
+	require_once("submodules.php");
+  
+	if (!empty($submodules) && is_array($submodules)) 
+	{
+		if ($this->askConfirmation("Process submodules file? [yes]" )) 
+		{
+			foreach ($submodules as $localLocation => $repoLocation) 
+			{
+				if ($this->askConfirmation("Install " . $repoLocation . " in " . $localLocation)) 
+				{
+					try {
+						$this->getFilesystem()->execute('git submodule add ' . $repoLocation . ' ' . sfConfig::get('sf_plugins_dir') . '/' . $localLocation);
+						$this->logSection('install', 'added git submodule to ' . $localLocation);
+					} catch (Exception $e) {
+						$this->logBlock($e->getMessage(), 'ERROR_LARGE');
+					}
+				}
+			}
+		}
+	}
 }
 
 /**
