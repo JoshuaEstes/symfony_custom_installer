@@ -1,31 +1,16 @@
 <?php
+
 /**
  *
  */
 
 /* @var $this sfGenerateProjectTask */
 
-
+/**
+ * Create a frontend application
+ */
 $this->logSection('install', 'create frontend application');
 $this->runTask('generate:app', 'frontend');
-
-//if ($this->askConfirmation('Do you want to install sfDoctrineGuardPlugin?[yes]'))
-//{
-//  $this->logSection('install', 'Install sfDoctrineGuardPlugin');
-//  $this->runTask('plugin:install', 'sfDoctrineGuardPlugin');
-//}
-//
-//if ($this->askConfirmation('Do you want to install sfTaskExtraPlugin?[yes]'))
-//{
-//  $this->logSection('install', 'Install sfTaskExtraPlugin');
-//  $this->runTask('plugin:install', 'sfTaskExtraPlugin');
-//}
-//
-//if ($this->askConfirmation('Do you want to install sfFormExtraPlugin?[yes]'))
-//{
-//  $this->logSection('install', 'Install sfFormExtraPlugin');
-//  $this->runTask('plugin:install', 'sfFormExtraPlugin');
-//}
 
 /**
  * Install some plugins?
@@ -36,6 +21,12 @@ while ($plugin = $this->ask('To install another plugin, please enter the name.')
   try
   {
     $this->runTask('plugin:install',$plugin);
+    $function = 'configure'.$plugin;
+    if (function_exists($function))
+    {
+      $this->logSection('installer',sprintf('Configuring plugin: %s',$plugin));
+      $function($this);
+    }
   }
   catch(Exception $e)
   {
@@ -43,8 +34,6 @@ while ($plugin = $this->ask('To install another plugin, please enter the name.')
     $this->logBlock($e->getMessage(),'ERROR_LARGE');
   }
 }
-
-
 
 /**
  * Initialize git
@@ -54,16 +43,20 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
   if ($this->askConfirmation('Do you want me to git init? [yes]'))
   {
     $this->getFilesystem()->execute('git init');
+
+    if ($remote = $this->ask('Where is the origin located?'))
+    {
+      $this->getFilesystem()->execute(sprintf('git remote add origin %s',$remote));
+    }
   }
 }
 
 /**
  *  Submodule File
  *  submodules.php should contain an array as such:
- * 
  *  $submodules = array(
  * 	'localLocation' => 'repoLocation'
- *  );
+ *  )
  */
 if (file_exists("submodules.php")) 
 {
@@ -71,7 +64,7 @@ if (file_exists("submodules.php"))
   
 	if (!empty($submodules) && is_array($submodules)) 
 	{
-		if ($this->askConfirmation("Process submodules file? [yes]" )) 
+		if ($this->askConfirmation("Process submodules file? " )) 
 		{
 			foreach ($submodules as $localLocation => $repoLocation) 
 			{
@@ -369,3 +362,45 @@ $factories['prod']['logger'] = array(
   ),
 );
 file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml',sfYaml::dump($factories,7));
+
+
+/**
+ *
+ * @param sfGenerateProjectTask $t
+ */
+function configuresfDoctrineGuardPlugin(sfGenerateProjectTask $t)
+{
+  $t->getFilesystem()->copy(sfConfig::get('sf_plugins_dir') . '/sfDoctrineGuardPlugin/data/fixtures/fixtures.yml.sample',sfConfig::get('sf_data_dir') . '/fixtures/sfGuard.yml');
+  
+  /**
+   * configure the remember me filter here
+   */
+  $filters = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml');
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml',sfYaml::dump($filters,10));
+
+  /**
+   * enable the module in the settings.yml
+   */
+  $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
+  $default_modules = empty($settings['all']['.settings']['default_modules']) ? array('default') : $settings['all']['.settings']['default_modules'];
+  array_push($default_modules,'sfGuardAuth');
+  $settings = array_merge($settings,array(
+    'all' => array(
+      '.settings' => array(
+        'enabled_modules' => $default_modules,
+        'login_module' => 'sfGuardAuth',
+        'login_action' => 'signin',
+        'secure_module' => 'sfGuardAuth',
+        'secure_action' => 'secure',
+      )
+    )
+  ));
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,10));
+
+  /**
+   * update the myUser.class.php
+   */
+  $contents = file_get_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php');
+  $contents = preg_replace('/sfBasicSecurityUser/','sfGuardSecurityUser',$contents);
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php',$contents);
+}
