@@ -6,7 +6,6 @@
  *
  */
 
-
 /**
  * Custom function to configure sfDoctrineGuardPlugin
  *
@@ -14,39 +13,39 @@
  */
 function configuresfDoctrineGuardPlugin(sfGenerateProjectTask $t)
 {
-  $t->getFilesystem()->copy(sfConfig::get('sf_plugins_dir') . '/sfDoctrineGuardPlugin/data/fixtures/fixtures.yml.sample',sfConfig::get('sf_data_dir') . '/fixtures/sfGuard.yml');
+  $t->getFilesystem()->copy(sfConfig::get('sf_plugins_dir') . '/sfDoctrineGuardPlugin/data/fixtures/fixtures.yml.sample', sfConfig::get('sf_data_dir') . '/fixtures/sfGuard.yml');
 
   /**
    * configure the remember me filter here
    */
   $filters = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml');
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml',sfYaml::dump($filters,10));
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml', sfYaml::dump($filters, 10));
 
   /**
    * enable the module in the settings.yml
    */
   $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
   $default_modules = empty($settings['all']['.settings']['default_modules']) ? array('default') : $settings['all']['.settings']['default_modules'];
-  array_push($default_modules,'sfGuardAuth');
-  $settings = array_merge($settings,array(
-    'all' => array(
-      '.settings' => array(
-        'enabled_modules' => $default_modules,
-        'login_module' => 'sfGuardAuth',
-        'login_action' => 'signin',
-        'secure_module' => 'sfGuardAuth',
-        'secure_action' => 'secure',
+  array_push($default_modules, 'sfGuardAuth');
+  $settings = array_merge($settings, array(
+      'all' => array(
+        '.settings' => array(
+          'enabled_modules' => $default_modules,
+          'login_module' => 'sfGuardAuth',
+          'login_action' => 'signin',
+          'secure_module' => 'sfGuardAuth',
+          'secure_action' => 'secure',
+        )
       )
-    )
-  ));
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,10));
+    ));
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 10));
 
   /**
    * update the myUser.class.php
    */
   $contents = file_get_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php');
-  $contents = preg_replace('/sfBasicSecurityUser/','sfGuardSecurityUser',$contents);
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php',$contents);
+  $contents = preg_replace('/sfBasicSecurityUser/', 'sfGuardSecurityUser', $contents);
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php', $contents);
 }
 
 /* @var $this sfGenerateProjectTask */
@@ -72,7 +71,7 @@ $settings['all']['.settings']['module_disabled_module'] = 'default';
 $settings['all']['.settings']['module_disabled_action'] = 'disabled';
 $settings['all']['.settings']['check_lock'] = true;
 $settings['prod']['.settings']['logging_enabled'] = true;
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,3));
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 3));
 
 /**
  * Update cookie name and add logging info
@@ -101,13 +100,13 @@ $factories['prod']['logger'] = array(
     ),
   ),
 );
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml',sfYaml::dump($factories,7));
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml', sfYaml::dump($factories, 7));
 
 
 /**
  * Create the 404 error template
  */
-$this->logSection('installer','creating 404 page');
+$this->logSection('installer', 'creating 404 page');
 $this->getFilesystem()->execute('mkdir -p ' . sfConfig::get('sf_apps_dir') . '/frontend/modules/default/templates');
 $contents = <<<'EOF'
 <?php decorate_with(dirname(__FILE__).'/defaultLayout.php') ?>
@@ -143,7 +142,7 @@ file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/modules/default/temp
 /**
  * Create the disabled page template
  */
-$this->logSection('installer','Creating disabled page');
+$this->logSection('installer', 'Creating disabled page');
 $contents = <<<'EOF'
 <?php decorate_with(dirname(__FILE__).'/defaultLayout.php') ?>
 
@@ -171,16 +170,16 @@ file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/modules/default/temp
  * Make sure the error404 and disabled pages are not secured
  */
 $this->getFilesystem()->execute('mkdir -p ' . sfConfig::get('sf_apps_dir') . '/frontend/modules/default/config');
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/modules/default/config/security.yml',sfYaml::dump(array(
-  'error404' => array('is_secure' => false),
-  'disabled' => array('is_secure' => false),
-)));
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/modules/default/config/security.yml', sfYaml::dump(array(
+    'error404' => array('is_secure' => false),
+    'disabled' => array('is_secure' => false),
+  )));
 
 
 /**
  * Create the 500 error page
  */
-$this->logSection('installer','creating 500 error page');
+$this->logSection('installer', 'creating 500 error page');
 $this->getFilesystem()->execute('mkdir -p ' . sfConfig::get('sf_apps_dir') . '/frontend/config');
 $contents = <<<'EOF'
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -239,7 +238,7 @@ file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/error.html.ph
 /**
  *
  */
-$this->logSection('installer','Creating Website Temporarily Unavailable page');
+$this->logSection('installer', 'Creating Website Temporarily Unavailable page');
 $contents = <<<'EOF'
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -286,28 +285,28 @@ $contents = <<<'EOF'
 </body>
 </html>
 EOF;
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/unavailable.php',$contents);
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/unavailable.php', $contents);
 
 /**
  * Install some plugins?
  */
 while ($plugin = $this->ask('To install another plugin, please enter the name.'))
 {
-  $this->logSection('install',sprintf('Installing %s',$plugin));
+  $this->logSection('install', sprintf('Installing %s', $plugin));
   try
   {
-    $this->runTask('plugin:install',$plugin);
-    $function = 'configure'.$plugin;
+    $this->runTask('plugin:install', $plugin);
+    $function = 'configure' . $plugin;
     if (function_exists($function))
     {
-      $this->logSection('installer',sprintf('Configuring plugin: %s',$plugin));
+      $this->logSection('installer', sprintf('Configuring plugin: %s', $plugin));
       $function($this);
     }
   }
-  catch(Exception $e)
+  catch (Exception $e)
   {
-    $this->logSection('install',sprintf('Could not install %s',$plugin));
-    $this->logBlock($e->getMessage(),'ERROR_LARGE');
+    $this->logSection('install', sprintf('Could not install %s', $plugin));
+    $this->logBlock($e->getMessage(), 'ERROR_LARGE');
   }
 }
 
@@ -338,12 +337,12 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
 
     if ($remote = $this->ask('Where is the origin located?'))
     {
-      $this->getFilesystem()->execute(sprintf('git remote add origin %s',$remote));
+      $this->getFilesystem()->execute(sprintf('git remote add origin %s', $remote));
     }
 
     if ($this->askConfirmation('Would you like me to create the .gitignore file? [yes]'))
     {
-      file_put_contents(sfConfig::get('sf_root_dir') . '/.gitignore',$gitignore);
+      file_put_contents(sfConfig::get('sf_root_dir') . '/.gitignore', $gitignore);
     }
   }
 }
@@ -353,18 +352,18 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
  */
 if (is_dir(sfConfig::get('sf_root_dir') . '/.git'))
 {
-  $this->logSection('install','Install git submodules');
+  $this->logSection('install', 'Install git submodules');
   while ($submodule = $this->ask('To install a git submodule plugin, please enter the git URL.'))
   {
-    preg_match('/\/(\w+)\.git/',$submodule,$match);
+    preg_match('/\/(\w+)\.git/', $submodule, $match);
     if (empty($match[1]))
     {
-      $this->logBlock('invalid git repo, must end with .git','ERROR_LARGE');
+      $this->logBlock('invalid git repo, must end with .git', 'ERROR_LARGE');
       continue;
     }
 
     $submodule_name = $match[1];
-    if (substr($submodule_name,-6) != 'Plugin')
+    if (substr($submodule_name, -6) != 'Plugin')
     {
       $submodule_name = $submodule_name . 'Plugin';
     }
@@ -377,19 +376,60 @@ if (is_dir(sfConfig::get('sf_root_dir') . '/.git'))
     catch (Exception $e)
     {
       $successfull_install = false;
-      $this->logSection('install',sprintf('Could not install %s',$plugin));
-      $this->logBlock($e->getMessage(),'ERROR_LARGE');
+      $this->logSection('install', sprintf('Could not install %s', $plugin));
+      $this->logBlock($e->getMessage(), 'ERROR_LARGE');
     }
 
     if ($successfull_install)
     {
-      $function = 'configure'.$submodule_name;
+      $function = 'configure' . $submodule_name;
       if (function_exists($function))
       {
-        $this->logSection('installer',sprintf('Configuring plugin: %s',$submodule_name));
+        $this->logSection('installer', sprintf('Configuring plugin: %s', $submodule_name));
         $function($this);
       }
       $this->enablePlugin($submodule_name);
+    }
+  }
+}
+
+/**
+ *  Submodule File
+ *  submodules.php should contain an array as such:
+ *  $submodules = array(
+ * 	'localLocation' => 'repoLocation'
+ *  );
+ */
+if (file_exists(sfConfig::get('sf_root_dir') . '/submodules.php') && is_dir(sfConfig::get('sf_root_dir') . '/.git'))
+{
+  require_once(sfConfig::get('sf_root_dir') . '/submodules.php');
+
+  if (!empty($submodules) && is_array($submodules))
+  {
+    if ($this->askConfirmation('Process submodules.php file? [yes]'))
+    {
+      foreach ($submodules as $pluginName => $repoLocation)
+      {
+        if ($this->askConfirmation('Do you want to install ' . $pluginName . '? [yes]'))
+        {
+          try
+          {
+            $sucessfull_install = true;
+            $this->getFilesystem()->execute('git submodule add ' . $repoLocation . ' ' . sfConfig::get('sf_plugins_dir') . '/' . $pluginName);
+            $this->logSection('install', 'added git submodule to ' . $pluginName);
+          }
+          catch (Exception $e)
+          {
+            $successfull_install = false;
+            $this->logBlock($e->getMessage(), 'ERROR_LARGE');
+          }
+
+          if ($sucessfull_install)
+          {
+            $this->enablePlugin($pluginName);
+          }
+        }
+      }
     }
   }
 }
@@ -403,7 +443,7 @@ if ($this->askConfirmation('Do you want me to help you setup the database config
   $dbname = $this->ask('Database database');
   $username = $this->ask('Database username');
   $password = $this->ask('Database password');
-  $this->runTask('configure:database','mysql:host='.$host.';dbname='.$dbname.' '.$username.' "'.$password.'"');
+  $this->runTask('configure:database', 'mysql:host=' . $host . ';dbname=' . $dbname . ' ' . $username . ' "' . $password . '"');
 }
 
 
