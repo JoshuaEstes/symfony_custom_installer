@@ -2,7 +2,52 @@
 
 /**
  *
+ * Custom Symfony Installer for 1.4
+ *
  */
+
+
+/**
+ * Custom function to configure sfDoctrineGuardPlugin
+ *
+ * @param sfGenerateProjectTask $t
+ */
+function configuresfDoctrineGuardPlugin(sfGenerateProjectTask $t)
+{
+  $t->getFilesystem()->copy(sfConfig::get('sf_plugins_dir') . '/sfDoctrineGuardPlugin/data/fixtures/fixtures.yml.sample',sfConfig::get('sf_data_dir') . '/fixtures/sfGuard.yml');
+
+  /**
+   * configure the remember me filter here
+   */
+  $filters = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml');
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml',sfYaml::dump($filters,10));
+
+  /**
+   * enable the module in the settings.yml
+   */
+  $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
+  $default_modules = empty($settings['all']['.settings']['default_modules']) ? array('default') : $settings['all']['.settings']['default_modules'];
+  array_push($default_modules,'sfGuardAuth');
+  $settings = array_merge($settings,array(
+    'all' => array(
+      '.settings' => array(
+        'enabled_modules' => $default_modules,
+        'login_module' => 'sfGuardAuth',
+        'login_action' => 'signin',
+        'secure_module' => 'sfGuardAuth',
+        'secure_action' => 'secure',
+      )
+    )
+  ));
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,10));
+
+  /**
+   * update the myUser.class.php
+   */
+  $contents = file_get_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php');
+  $contents = preg_replace('/sfBasicSecurityUser/','sfGuardSecurityUser',$contents);
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php',$contents);
+}
 
 /* @var $this sfGenerateProjectTask */
 
@@ -12,123 +57,52 @@
 $this->logSection('install', 'create frontend application');
 $this->runTask('generate:app', 'frontend');
 
-/**
- * Install some plugins?
- */
-while ($plugin = $this->ask('To install another plugin, please enter the name.'))
-{
-  $this->logSection('install',sprintf('Installing %s',$plugin));
-  try
-  {
-    $this->runTask('plugin:install',$plugin);
-    $function = 'configure'.$plugin;
-    if (function_exists($function))
-    {
-      $this->logSection('installer',sprintf('Configuring plugin: %s',$plugin));
-      $function($this);
-    }
-  }
-  catch(Exception $e)
-  {
-    $this->logSection('install',sprintf('Could not install %s',$plugin));
-    $this->logBlock($e->getMessage(),'ERROR_LARGE');
-  }
-}
 
 /**
- * Initialize git
+ * Edit the settings.yml file
  */
-$gitignore = <<<EOF
-cache/*
-log/*
-web/uploads/*
-config/databases.yml
-config/propel.ini
-data/sql/*
-lib/filter/doctrine/base/Base*
-lib/filter/doctrine/*Plugin/base/Base*
-lib/form/doctrine/base/Base*
-lib/form/doctrine/*Plugin/base/Base*
-lib/model/doctrine/base/Base*
-lib/model/doctrine/*Plugin/base/Base*
-lib/model/om/*
-lib/model/map/*
-EOF;
-if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
-{
-  if ($this->askConfirmation('Do you want me to git init? [yes]'))
-  {
-    $this->getFilesystem()->execute('git init');
-
-    if ($remote = $this->ask('Where is the origin located?'))
-    {
-      $this->getFilesystem()->execute(sprintf('git remote add origin %s',$remote));
-    }
-
-    if ($this->askConfirmation('Would you like me to create the .gitignore file? [yes]'))
-    {
-      file_put_contents(sfConfig::get('sf_root_dir') . '/.gitignore',$gitignore);
-    }
-  }
-}
+$settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
+$settings['all']['.settings']['login_module'] = 'default';
+$settings['all']['.settings']['login_action'] = 'login';
+$settings['all']['.settings']['secure_module'] = 'default';
+$settings['all']['.settings']['secure_action'] = 'secure';
+$settings['all']['.settings']['error_404_module'] = 'default';
+$settings['all']['.settings']['error_404_action'] = 'error404';
+$settings['all']['.settings']['module_disabled_module'] = 'default';
+$settings['all']['.settings']['module_disabled_action'] = 'disabled';
+$settings['all']['.settings']['check_lock'] = true;
+$settings['prod']['.settings']['logging_enabled'] = true;
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,3));
 
 /**
- * If using git, install some submodule plugins
+ * Update cookie name and add logging info
  */
-if (is_dir(sfConfig::get('sf_root_dir') . '/.git'))
-{
-  $this->logSection('install','Install git submodules');
-  while ($submodule = $this->ask('To install a git submodule plugin, please enter the git URL.'))
-  {
-    preg_match('/\/(\w+)\.git/',$submodule,$match);
-    if (empty($match[1]))
-    {
-      $this->logBlock('invalid git repo, must end with .git','ERROR_LARGE');
-      continue;
-    }
+//$cookie_name = $this->ask('What do you want to name your cookie? [symfony]');
+//$cookie_name = empty($cookie_name) ? 'symfony' : $cookie_name;
+$factories = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml');
+$factories['all']['storage'] = array(
+  'class' => 'sfSessionStorage',
+  'param' => array(
+    'session_name' => 'symfony'
+  )
+);
+$factories['prod']['logger'] = array(
+  'class' => 'sfAggregateLogger',
+  'param' => array(
+    'level' => 'err',
+    'loggers' => array(
+      'sf_file_debug' => array(
+        'class' => 'sfFileLogger',
+        'param' => array(
+          'level' => 'err',
+          'file' => '%SF_LOG_DIR%/%SF_APP%_%SF_ENVIRONMENT%.log'
+        ),
+      ),
+    ),
+  ),
+);
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml',sfYaml::dump($factories,7));
 
-    $submodule_name = $match[1];
-    if (substr($submodule_name,-6) != 'Plugin')
-    {
-      $submodule_name = $submodule_name . 'Plugin';
-    }
-
-    try
-    {
-      $this->getFilesystem()->execute('git submodule add ' . $submodule . ' ' . sfConfig::get('sf_plugins_dir') . '/' . $submodule_name);
-      $successfull_install = true;
-    }
-    catch (Exception $e)
-    {
-      $successfull_install = false;
-      $this->logSection('install',sprintf('Could not install %s',$plugin));
-      $this->logBlock($e->getMessage(),'ERROR_LARGE');
-    }
-
-    if ($successfull_install)
-    {
-      $function = 'configure'.$submodule_name;
-      if (function_exists($function))
-      {
-        $this->logSection('installer',sprintf('Configuring plugin: %s',$submodule_name));
-        $function($this);
-      }
-      $this->enablePlugin($submodule_name);
-    }
-  }
-}
-
-$this->logSection('install', 'publish assets');
-$this->runTask('plugin:publish-assets');
-
-if ($this->askConfirmation('Do you want me to help you setup the database config?'))
-{
-  $host = $this->ask('Database host');
-  $dbname = $this->ask('Database database');
-  $username = $this->ask('Database username');
-  $password = $this->ask('Database password');
-  $this->runTask('configure:database','mysql:host='.$host.';dbname='.$dbname.' '.$username.' "'.$password.'"');
-}
 
 /**
  * Create the 404 error template
@@ -138,7 +112,7 @@ $this->getFilesystem()->execute('mkdir -p ' . sfConfig::get('sf_apps_dir') . '/f
 $contents = <<<'EOF'
 <?php decorate_with(dirname(__FILE__).'/defaultLayout.php') ?>
 
-<div class="sfTMessageContainer sfTAlert"> 
+<div class="sfTMessageContainer sfTAlert">
   <?php echo image_tag('/sf/sf_default/images/icons/cancel48.png', array('alt' => 'page not found', 'class' => 'sfTMessageIcon', 'size' => '48x48')) ?>
   <div class="sfTMessageWrap">
     <h1>Oops! Page Not Found</h1>
@@ -315,88 +289,128 @@ EOF;
 file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/unavailable.php',$contents);
 
 /**
- * Edit the settings.yml file
+ * Install some plugins?
  */
-$settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
-$settings['all']['.settings']['login_module'] = 'default';
-$settings['all']['.settings']['login_action'] = 'login';
-$settings['all']['.settings']['secure_module'] = 'default';
-$settings['all']['.settings']['secure_action'] = 'secure';
-$settings['all']['.settings']['error_404_module'] = 'default';
-$settings['all']['.settings']['error_404_action'] = 'error404';
-$settings['all']['.settings']['module_disabled_module'] = 'default';
-$settings['all']['.settings']['module_disabled_action'] = 'disabled';
-$settings['all']['.settings']['check_lock'] = true;
-$settings['prod']['.settings']['logging_enabled'] = true;
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,3));
-
-/**
- * Update cookie names
- */
-$cookie_name = $this->ask('What do you want to name your cookie?');
-$cookie_name = empty($cookie_name) ? 'symfony' : $cookie_name;
-$factories = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml');
-$factories['all']['storage'] = array(
-  'class' => 'sfSessionStorage',
-  'param' => array(
-    'session_name' => $cookie_name
-  )
-);
-$factories['prod']['logger'] = array(
-  'class' => 'sfAggregateLogger',
-  'param' => array(
-    'level' => 'err',
-    'loggers' => array(
-      'sf_file_debug' => array(
-        'class' => 'sfFileLogger',
-        'param' => array(
-          'level' => 'err',
-          'file' => '%SF_LOG_DIR%/%SF_APP%_%SF_ENVIRONMENT%.log'
-        ),
-      ),
-    ),
-  ),
-);
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml',sfYaml::dump($factories,7));
-
-
-/**
- *
- * @param sfGenerateProjectTask $t
- */
-function configuresfDoctrineGuardPlugin(sfGenerateProjectTask $t)
+while ($plugin = $this->ask('To install another plugin, please enter the name.'))
 {
-  $t->getFilesystem()->copy(sfConfig::get('sf_plugins_dir') . '/sfDoctrineGuardPlugin/data/fixtures/fixtures.yml.sample',sfConfig::get('sf_data_dir') . '/fixtures/sfGuard.yml');
-  
-  /**
-   * configure the remember me filter here
-   */
-  $filters = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml');
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/filters.yml',sfYaml::dump($filters,10));
-
-  /**
-   * enable the module in the settings.yml
-   */
-  $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
-  $default_modules = empty($settings['all']['.settings']['default_modules']) ? array('default') : $settings['all']['.settings']['default_modules'];
-  array_push($default_modules,'sfGuardAuth');
-  $settings = array_merge($settings,array(
-    'all' => array(
-      '.settings' => array(
-        'enabled_modules' => $default_modules,
-        'login_module' => 'sfGuardAuth',
-        'login_action' => 'signin',
-        'secure_module' => 'sfGuardAuth',
-        'secure_action' => 'secure',
-      )
-    )
-  ));
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml',sfYaml::dump($settings,10));
-
-  /**
-   * update the myUser.class.php
-   */
-  $contents = file_get_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php');
-  $contents = preg_replace('/sfBasicSecurityUser/','sfGuardSecurityUser',$contents);
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/lib/myUser.class.php',$contents);
+  $this->logSection('install',sprintf('Installing %s',$plugin));
+  try
+  {
+    $this->runTask('plugin:install',$plugin);
+    $function = 'configure'.$plugin;
+    if (function_exists($function))
+    {
+      $this->logSection('installer',sprintf('Configuring plugin: %s',$plugin));
+      $function($this);
+    }
+  }
+  catch(Exception $e)
+  {
+    $this->logSection('install',sprintf('Could not install %s',$plugin));
+    $this->logBlock($e->getMessage(),'ERROR_LARGE');
+  }
 }
+
+/**
+ * Initialize git
+ */
+$gitignore = <<<EOF
+cache/*
+log/*
+web/uploads/*
+config/databases.yml
+config/propel.ini
+data/sql/*
+lib/filter/doctrine/base/Base*
+lib/filter/doctrine/*Plugin/base/Base*
+lib/form/doctrine/base/Base*
+lib/form/doctrine/*Plugin/base/Base*
+lib/model/doctrine/base/Base*
+lib/model/doctrine/*Plugin/base/Base*
+lib/model/om/*
+lib/model/map/*
+EOF;
+if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
+{
+  if ($this->askConfirmation('Do you want me to git init? [yes]'))
+  {
+    $this->getFilesystem()->execute('git init');
+
+    if ($remote = $this->ask('Where is the origin located?'))
+    {
+      $this->getFilesystem()->execute(sprintf('git remote add origin %s',$remote));
+    }
+
+    if ($this->askConfirmation('Would you like me to create the .gitignore file? [yes]'))
+    {
+      file_put_contents(sfConfig::get('sf_root_dir') . '/.gitignore',$gitignore);
+    }
+  }
+}
+
+/**
+ * If using git, install some submodule plugins
+ */
+if (is_dir(sfConfig::get('sf_root_dir') . '/.git'))
+{
+  $this->logSection('install','Install git submodules');
+  while ($submodule = $this->ask('To install a git submodule plugin, please enter the git URL.'))
+  {
+    preg_match('/\/(\w+)\.git/',$submodule,$match);
+    if (empty($match[1]))
+    {
+      $this->logBlock('invalid git repo, must end with .git','ERROR_LARGE');
+      continue;
+    }
+
+    $submodule_name = $match[1];
+    if (substr($submodule_name,-6) != 'Plugin')
+    {
+      $submodule_name = $submodule_name . 'Plugin';
+    }
+
+    try
+    {
+      $this->getFilesystem()->execute('git submodule add ' . $submodule . ' ' . sfConfig::get('sf_plugins_dir') . '/' . $submodule_name);
+      $successfull_install = true;
+    }
+    catch (Exception $e)
+    {
+      $successfull_install = false;
+      $this->logSection('install',sprintf('Could not install %s',$plugin));
+      $this->logBlock($e->getMessage(),'ERROR_LARGE');
+    }
+
+    if ($successfull_install)
+    {
+      $function = 'configure'.$submodule_name;
+      if (function_exists($function))
+      {
+        $this->logSection('installer',sprintf('Configuring plugin: %s',$submodule_name));
+        $function($this);
+      }
+      $this->enablePlugin($submodule_name);
+    }
+  }
+}
+
+$this->logSection('install', 'publish assets');
+$this->runTask('plugin:publish-assets');
+
+if ($this->askConfirmation('Do you want me to help you setup the database config? [yes]'))
+{
+  $host = $this->ask('Database host');
+  $dbname = $this->ask('Database database');
+  $username = $this->ask('Database username');
+  $password = $this->ask('Database password');
+  $this->runTask('configure:database','mysql:host='.$host.';dbname='.$dbname.' '.$username.' "'.$password.'"');
+}
+
+
+
+/**
+ * Clear the cache
+ */
+$this->runTask('cc');
+
+
