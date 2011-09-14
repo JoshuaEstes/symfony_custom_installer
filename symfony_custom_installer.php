@@ -38,6 +38,22 @@ while ($plugin = $this->ask('To install another plugin, please enter the name.')
 /**
  * Initialize git
  */
+$gitignore = <<<EOF
+cache/*
+log/*
+web/uploads/*
+config/databases.yml
+config/propel.ini
+data/sql/*
+lib/filter/doctrine/base/Base*
+lib/filter/doctrine/*Plugin/base/Base*
+lib/form/doctrine/base/Base*
+lib/form/doctrine/*Plugin/base/Base*
+lib/model/doctrine/base/Base*
+lib/model/doctrine/*Plugin/base/Base*
+lib/model/om/*
+lib/model/map/*
+EOF;
 if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
 {
   if ($this->askConfirmation('Do you want me to git init? [yes]'))
@@ -47,6 +63,11 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
     if ($remote = $this->ask('Where is the origin located?'))
     {
       $this->getFilesystem()->execute(sprintf('git remote add origin %s',$remote));
+    }
+
+    if ($this->askConfirmation('Would you like me to create the .gitignore file? [yes]'))
+    {
+      file_put_contents(sfConfig::get('sf_root_dir') . '/.gitignore',$gitignore);
     }
   }
 }
@@ -86,6 +107,12 @@ if (is_dir(sfConfig::get('sf_root_dir') . '/.git'))
 
     if ($successfull_install)
     {
+      $function = 'configure'.$submodule_name;
+      if (function_exists($function))
+      {
+        $this->logSection('installer',sprintf('Configuring plugin: %s',$submodule_name));
+        $function($this);
+      }
       $this->enablePlugin($submodule_name);
     }
   }
