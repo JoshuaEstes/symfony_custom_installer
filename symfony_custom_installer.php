@@ -56,7 +56,7 @@ if (!is_dir(sfConfig::get('sf_root_dir') . '/.git'))
  *  submodules.php should contain an array as such:
  *  $submodules = array(
  * 	'localLocation' => 'repoLocation'
- *  )
+ *  );
  */
 if (file_exists("submodules.php")) 
 {
@@ -64,7 +64,7 @@ if (file_exists("submodules.php"))
   
 	if (!empty($submodules) && is_array($submodules)) 
 	{
-		if ($this->askConfirmation("Process submodules file? " )) 
+		if ($this->askConfirmation("Process submodules file? [yes]" )) 
 		{
 			foreach ($submodules as $localLocation => $repoLocation) 
 			{
