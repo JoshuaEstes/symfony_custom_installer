@@ -85,9 +85,6 @@ $source->save();
  */
 $this->getFilesystem()->execute(sprintf('wget https://raw.github.com/github/gitignore/master/Symfony.gitignore -O %s/.gitignore', sfConfig::get('sf_root_dir')));
 
-
-$this->runTask('plugin:publish-assets');
-
 $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
 $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
 
@@ -97,8 +94,6 @@ $this->getFilesystem()->execute('git commit -m \'initial commit\'');
 $this->getFilesystem()->execute('git submodule add git://github.com/facebook/facebook-php-sdk.git lib/vendor/facebook-php-sdk');
 $this->getFilesystem()->execute('git commit -m \'added facebook-php-sdk subbmodule\'');
 
-
-
 if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin?'))
 {
   $this->getFilesystem()->execute('git submodule add git://github.com/n1k0/npAssetsOptimizerPlugin.git plugins/npAssetsOptimizerPlugin');
@@ -106,11 +101,5 @@ if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin?'))
   $this->getFilesystem()->execute('git add .');
   $this->getFilesystem()->execute('git commit -m \'added npAssetsOptimizerPlugin\'');
 }
-
-
-
-
-
-
 
 $this->runTask('plugin:publish-assets');
