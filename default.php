@@ -99,8 +99,19 @@ $this->getFilesystem()->execute(sprintf('wget https://raw.github.com/github/giti
 /**
  * Configure databases.yml and make a copy
  */
-$this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=symfony_app" "root" "root"');
-$this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
+/**
+ * Configure database
+ */
+if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
+{
+    $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=symfony" "root" "root"');
+    $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
+    $host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
+    $dbname = $this->ask('dbname (default: symfony)', 'QUESTION', 'symfony');
+    $username = $this->ask('username (default: root)', 'QUESTION', 'root');
+    $password = $this->ask('password (default: root)', 'QUESTION', 'root');
+    $this->runTask('configure:database', sprintf('"mysql:host=%s;dbname=%s" "%s" "%s"',$host,$dbname,$username,$password));
+}
 
 /**
  * Commit what we have so far
