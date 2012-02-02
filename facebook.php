@@ -77,7 +77,7 @@ file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml
  * Manipulate the ProjectConfiguration.class.php
  */
 $source = sfClassManipulator::fromFile(sfConfig::get('sf_config_dir') . '/ProjectConfiguration.class.php');
-$source->wrapMethod('setup', '', '}public function configureDoctrine(Doctrine_Manager $manager){');
+$source->wrapMethod('setup', '', "}\n\tpublic function configureDoctrine(Doctrine_Manager \$manager)\n\t{");
 $source->save();
 
 /**
@@ -85,8 +85,19 @@ $source->save();
  */
 $this->getFilesystem()->execute(sprintf('wget https://raw.github.com/github/gitignore/master/Symfony.gitignore -O %s/.gitignore', sfConfig::get('sf_root_dir')));
 
-$this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
-$this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
+/**
+ * Configure database
+ */
+if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
+{
+    $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
+    $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
+    $host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
+    $dbname = $this->ask('dbname (default: symfony)', 'QUESTION', 'symfony');
+    $username = $this->ask('username (default: root)', 'QUESTION', 'root');
+    $password = $this->ask('password (default: root)', 'QUESTION', 'root');
+    $this->runTask('configure:database', sprintf('"mysql:host=%s;dbname=%s" "%s" "%s"',$host,$dbname,$username,$password));
+}
 
 $this->getFilesystem()->execute('git add .');
 $this->getFilesystem()->execute('git commit -m \'initial commit\'');
@@ -94,7 +105,7 @@ $this->getFilesystem()->execute('git commit -m \'initial commit\'');
 $this->getFilesystem()->execute('git submodule add git://github.com/facebook/facebook-php-sdk.git lib/vendor/facebook-php-sdk');
 $this->getFilesystem()->execute('git commit -m \'added facebook-php-sdk subbmodule\'');
 
-if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin?'))
+if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin? (default: yes)'))
 {
   $this->getFilesystem()->execute('git submodule add git://github.com/n1k0/npAssetsOptimizerPlugin.git plugins/npAssetsOptimizerPlugin');
   sfSymfonyPluginManager::enablePlugin('sfErrorNotifierPlugin', sfConfig::get('sf_config_dir'));
@@ -103,3 +114,37 @@ if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin?'))
 }
 
 $this->runTask('plugin:publish-assets');
+
+/**
+ * Setup a vhost file
+ */
+if ($this->askConfirmation('Would you like to generate a vhost config file? (default: yes'))
+{
+    $tmpl = <<<EOF
+<VirtualHost *:80>
+  ServerName symfony.local
+  DocumentRoot "%SF_WEB_DIR%"
+  <Directory "%SF_WEB_DIR%">
+    AllowOverride All
+    Allow from All
+  </Directory>
+
+  Alias /sf %SF_DATA_WEB_SF_DIR%
+  <Directory "%SF_DATA_WEB_SF_DIR%">
+    AllowOverride All
+    Allow from All
+  </Directory>
+
+  <Directory "%SF_UPLOAD_DIR%">
+     php_flag engine off
+   </Directory>
+</VirtualHost>
+EOF;
+    $vhost = strtr($tmpl,array(
+      '%SF_WEB_DIR%' => sfConfig::get('sf_web_dir'),
+      '%SF_UPLOAD_DIR%' => sfConfig::get('sf_upload_dir'),
+      '%SF_DATA_WEB_SF_DIR%' => realpath(sfConfig::get('sf_symfony_lib_dir') . '/../data/web/sf')
+    ));
+    $this->getFilesystem()->touch(sfConfig::get('sf_config_dir') . '/vhost.dev');
+    file_put_contents(sfConfig::get('sf_config_dir') . '/vhost.dev', $vhost);
+}

@@ -209,3 +209,38 @@ if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin?'))
  * publish the plugin assets or make them symlinks son!
  */
 $this->runTask('plugin:publish-assets');
+
+
+/**
+ * Setup a vhost file
+ */
+if ($this->askConfirmation('Would you like to generate a vhost config file? (default: yes'))
+{
+    $tmpl = <<<EOF
+<VirtualHost *:80>
+  ServerName symfony.local
+  DocumentRoot "%SF_WEB_DIR%"
+  <Directory "%SF_WEB_DIR%">
+    AllowOverride All
+    Allow from All
+  </Directory>
+
+  Alias /sf %SF_DATA_WEB_SF_DIR%
+  <Directory "%SF_DATA_WEB_SF_DIR%">
+    AllowOverride All
+    Allow from All
+  </Directory>
+
+  <Directory "%SF_UPLOAD_DIR%">
+     php_flag engine off
+   </Directory>
+</VirtualHost>
+EOF;
+    $vhost = strtr($tmpl,array(
+      '%SF_WEB_DIR%' => sfConfig::get('sf_web_dir'),
+      '%SF_UPLOAD_DIR%' => sfConfig::get('sf_upload_dir'),
+      '%SF_DATA_WEB_SF_DIR%' => realpath(sfConfig::get('sf_symfony_lib_dir') . '/../data/web/sf')
+    ));
+    $this->getFilesystem()->touch(sfConfig::get('sf_config_dir') . '/vhost.dev');
+    file_put_contents(sfConfig::get('sf_config_dir') . '/vhost.dev', $vhost);
+}
