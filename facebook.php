@@ -99,8 +99,7 @@ if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
     $this->runTask('configure:database', sprintf('"mysql:host=%s;dbname=%s" "%s" "%s"',$host,$dbname,$username,$password));
 }
 
-$this->getFilesystem()->execute('git add .');
-$this->getFilesystem()->execute('git commit -m \'initial commit\'');
+$this->getFilesystem()->execute('git add .; git commit -m "initial commit"');
 
 $this->getFilesystem()->execute('git submodule add git://github.com/facebook/facebook-php-sdk.git lib/vendor/facebook-php-sdk');
 $this->getFilesystem()->execute('git commit -m \'added facebook-php-sdk subbmodule\'');
@@ -109,8 +108,7 @@ if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin? (def
 {
   $this->getFilesystem()->execute('git submodule add git://github.com/n1k0/npAssetsOptimizerPlugin.git plugins/npAssetsOptimizerPlugin');
   sfSymfonyPluginManager::enablePlugin('sfErrorNotifierPlugin', sfConfig::get('sf_config_dir'));
-  $this->getFilesystem()->execute('git add .');
-  $this->getFilesystem()->execute('git commit -m \'added npAssetsOptimizerPlugin\'');
+  $this->getFilesystem()->execute('git add. ;git commit -m \'added npAssetsOptimizerPlugin\'');
 }
 
 $this->runTask('plugin:publish-assets');
@@ -120,9 +118,10 @@ $this->runTask('plugin:publish-assets');
  */
 if ($this->askConfirmation('Would you like to generate a vhost config file? (default: yes'))
 {
+    $this->getFilesystem()->touch(sfConfig::get('sf_config_dir') . '/vhost.dev');
     $tmpl = <<<EOF
 <VirtualHost *:80>
-  ServerName symfony.local
+  ServerName %SERVER_NAME%
   DocumentRoot "%SF_WEB_DIR%"
   <Directory "%SF_WEB_DIR%">
     AllowOverride All
@@ -140,11 +139,149 @@ if ($this->askConfirmation('Would you like to generate a vhost config file? (def
    </Directory>
 </VirtualHost>
 EOF;
+    $serverName = $this->ask('ServerName (default: symfony.local)','QUESTION','symfony.local');
     $vhost = strtr($tmpl,array(
       '%SF_WEB_DIR%' => sfConfig::get('sf_web_dir'),
       '%SF_UPLOAD_DIR%' => sfConfig::get('sf_upload_dir'),
       '%SF_DATA_WEB_SF_DIR%' => realpath(sfConfig::get('sf_symfony_lib_dir') . '/../data/web/sf')
     ));
-    $this->getFilesystem()->touch(sfConfig::get('sf_config_dir') . '/vhost.dev');
     file_put_contents(sfConfig::get('sf_config_dir') . '/vhost.dev', $vhost);
+    $this->getFilesystem()->execute('git add .; git commit -m "Added vhost file"');
+}
+
+/**
+ * Install capistrano?
+ */
+if ($this->askConfirmation('Do you want to install Capistrano? (default: no)', 'QUESTION', false))
+{
+    try
+    {
+        $this->getFilesystem()->execute('sudo gem install capistrano');
+        $this->getFilesystem()->execute('sudo gem install capistrano-ext');
+        $this->getFilesystem()->execute('sudo gen install capifony');
+    } catch (Exception $e)
+    {
+        $this->logBlock($e->getMessage(), 'ERROR_LARGE');
+    }
+}
+
+/**
+ * Generate the capistrano stuff
+ */
+if ($this->askConfirmation('Would you like to install the cap files? (default: yes)'))
+{
+    $this->getFilesystem()->mkdirs(sfConfig::get('sf_config_dir') . '/deploy');
+    $this->getFilesystem()->touch(array(
+        sfConfig::get('sf_config_dir') . '/app.yml',
+        sfConfig::get('sf_config_dir') . '/deploy.rb',
+        sfConfig::get('sf_config_dir') . '/deploy/beta.rb',
+        sfConfig::get('sf_config_dir') . '/deploy/production.rb',
+        sfConfig::get('sf_root_dir') . '/Capfile',
+    ));
+    $CapfileTmpl = <<<EOF
+load 'deploy' if respond_to?(:namespace) # cap2 differentiator
+Dir['plugins/*/lib/recipes/*.rb'].each { |plugin| load(plugin) }
+load Gem.required_location('capifony', 'symfony1.rb')
+load 'config/deploy' # remove this line to skip loading any of the default tasks
+
+# Load in the multistage configuration and setup the stages
+set :stages, %w(beta production)
+require 'capistrano/ext/multistage'
+
+set :shared_children,   %w(log web/uploads cache)
+set :shared_files,      %w(config/databases.yml config/app.yml)
+EOF;
+    file_put_contents(sfConfig::get('sf_root_dir') . '/Capfile', $CapfileTmpl);
+
+    $deployTmpl = <<<EOF
+set :application,             "%APPLICATION%"
+set :scm,                     :git
+set :git_enable_submodules,   1
+set :repository,              "%REPO%"
+set :deploy_via,              :remote_cache
+set :use_sudo,                false
+set :group_writable,          false
+set :keep_releases,           3
+ssh_options[:forward_agent] = true
+EOF;
+    $applicationName = $this->ask('Application name (default: symfony)', 'QUESTION', 'symfony');
+    do
+    {
+        $repoURL = $this->ask('Git repo (ie git@github.com:JoshuaEstes/repo.git)', 'QUESTION', false);
+    }
+    while(!$repoURL);
+    $deployRb = strtr($deployTmpl, array(
+      '%APPLICATION%' => $applicationName,
+      '%REPO%' => $repoURL,
+    ));
+    file_put_contents(sfConfig::get('sf_config_dir') . '/deploy.rb', $deployRb);
+
+    $this->logBlock("Setup beta deply", 'INFO_LARGE');
+    $betaTmpl = <<<EOF
+set :domain,      "%BETA_DOMAIN%"
+set :deploy_to,   "%BETA_DEPLOY_TO%"
+set :user,        "%BETA_USER%"
+set :branch,      "%BETA_BRANCH%"
+role :web,        domain
+role :app,        domain
+role :db,         domain, :primary => true
+set :can_cold_deploy,   false
+set :frontend_application_name,  "frontend"
+set :symfony_env_prod, "prod"
+EOF;
+    do
+    {
+        $betaDomain = $this->ask('Beta domain (ie beta.example.com)','QUESTION',false);
+    }
+    while(!$betaDomain);
+    $betaDeployTo = $this->ask(sprintf('Beta deploy path (default: /var/www/%s)',$betaDomain),'QUESTION',sprintf('/var/www/%s',$betaDomain));
+    do
+    {
+        $betaUser = $this->ask('Beta ssh username','QUESTION',false);
+    }
+    while(!$betaUser);
+    $betaBranch = $this->ask('Beta branch (default: deploy)','QUESTION','deploy');
+    $betaRb = strtr($betaTmpl,array(
+      '%BETA_DOMAIN%' => $betaDomain,
+      '%BETA_DEPLOY_TO%' => $betaDeployTo,
+      '%BETA_USER%' => $betaUser,
+      '%BETA_BRANCH%' => $betaBranch,
+    ));
+    file_put_contents(sfConfig::get('sf_config_dir') . '/deploy/beta.rb', $betaRb);
+
+    $this->logBlock("Setup production deploy", 'INFO_LARGE');
+
+    $productionTmpl = <<<EOF
+set :domain,      "%PROD_DOMAIN%"
+set :deploy_to,   "%PROD_DEPLOY_TO%"
+set :user,        "%PROD_USER%"
+set :branch,      "%PROD_BRANCH%"
+role :web,        domain
+role :app,        domain
+role :db,         domain, :primary => true
+set :can_cold_deploy,   false
+set :frontend_application_name,  "frontend"
+set :symfony_env_prod, "prod"
+EOF;
+    do
+    {
+        $prodDomain = $this->ask('production domain (ie example.com)','QUESTION',false);
+    }
+    while(!$prodDomain);
+    $prodDeployTo = $this->ask(sprintf('production deploy path (default: /var/www/%s)',$prodDomain),'QUESTION',sprintf('/var/www/%s',$prodDomain));
+    do
+    {
+        $prodUser = $this->ask('production ssh username','QUESTION',false);
+    }
+    while(!$prodUser);
+    $prodBranch = $this->ask('production branch (default: master)','QUESTION','master');
+    $prodRb = strtr($productionTmpl,array(
+      '%PROD_DOMAIN%' => $prodDomain,
+      '%PROD_DEPLOY_TO%' => $prodDeployTo,
+      '%PROD_USER%' => $prodUser,
+      '%PROD_BRANCH%' => $prodBranch,
+    ));
+    file_put_contents(sfConfig::get('sf_config_dir') . '/deploy/production.rb', $prodRb);
+
+    $this->getFilesystem()->execute('git add .; git commit -m "Added capistrano files"');
 }
