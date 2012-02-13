@@ -446,6 +446,10 @@ if ($this->askConfirmation('Would you like to install the cap files? (default: y
     $this->getFilesystem()->mkdirs(sfConfig::get('sf_config_dir') . '/deploy');
     $this->getFilesystem()->touch(array(
         sfConfig::get('sf_config_dir') . '/app.yml',
+        sfConfig::get('sf_config_dir') . '/app.yml.beta',
+        sfConfig::get('sf_config_dir') . '/app.yml.production',
+        sfConfig::get('sf_config_dir') . '/web/robots.txt.beta',
+        sfConfig::get('sf_config_dir') . '/web/robots.txt.production',
         sfConfig::get('sf_config_dir') . '/deploy.rb',
         sfConfig::get('sf_config_dir') . '/deploy/beta.rb',
         sfConfig::get('sf_config_dir') . '/deploy/production.rb',

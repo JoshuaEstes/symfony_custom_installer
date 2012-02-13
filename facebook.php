@@ -88,15 +88,24 @@ $this->getFilesystem()->execute(sprintf('wget https://raw.github.com/github/giti
 /**
  * Configure database
  */
-if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
+if ($this->askConfirmation('Do you need to use a database? (default: no)', 'QUESTION', false))
 {
-    $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
-    $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
-    $host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
-    $dbname = $this->ask('dbname (default: symfony)', 'QUESTION', 'symfony');
-    $username = $this->ask('username (default: root)', 'QUESTION', 'root');
-    $password = $this->ask('password (default: root)', 'QUESTION', 'root');
-    $this->runTask('configure:database', sprintf('"mysql:host=%s;dbname=%s" "%s" "%s"',$host,$dbname,$username,$password));
+  if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
+  {
+      $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
+      $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
+      $host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
+      $dbname = $this->ask('dbname (default: symfony)', 'QUESTION', 'symfony');
+      $username = $this->ask('username (default: root)', 'QUESTION', 'root');
+      $password = $this->ask('password (default: root)', 'QUESTION', 'root');
+      $this->runTask('configure:database', sprintf('"mysql:host=%s;dbname=%s" "%s" "%s"',$host,$dbname,$username,$password));
+  }
+}
+else
+{
+  $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
+  $settings['all']['.settings']['use_database'] = false;
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 3));
 }
 
 $this->getFilesystem()->execute('git add .; git commit -m "initial commit"');
@@ -173,6 +182,10 @@ if ($this->askConfirmation('Would you like to install the cap files? (default: y
     $this->getFilesystem()->mkdirs(sfConfig::get('sf_config_dir') . '/deploy');
     $this->getFilesystem()->touch(array(
         sfConfig::get('sf_config_dir') . '/app.yml',
+        sfConfig::get('sf_config_dir') . '/app.yml.beta',
+        sfConfig::get('sf_config_dir') . '/app.yml.production',
+        sfConfig::get('sf_config_dir') . '/web/robots.txt.beta',
+        sfConfig::get('sf_config_dir') . '/web/robots.txt.production',
         sfConfig::get('sf_config_dir') . '/deploy.rb',
         sfConfig::get('sf_config_dir') . '/deploy/beta.rb',
         sfConfig::get('sf_config_dir') . '/deploy/production.rb',
