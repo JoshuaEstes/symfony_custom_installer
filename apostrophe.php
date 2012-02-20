@@ -231,3 +231,4 @@ $this->getFilesystem()->execute('php symfony doctrine:build --all --and-load --n
 $this->getFilesystem()->execute('php symfony plugin:publish-assets');
 $this->getFilesystem()->execute('rm -rf cache/*');
 $this->getFilesystem()->execute('php symfony project:permissions');
+$this->getFilesystem()->execute('php symfony apostrophe:publish-all-pages');
