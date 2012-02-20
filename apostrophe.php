@@ -137,14 +137,18 @@ $this->getFilesystem()->execute('git add .; git commit -m "Added lib/vendor to i
 /**
  * Copy databases.yml
  */
+$host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
+$dbname = $this->ask('dbname (default: apostrophe)', 'QUESTION', 'apostrophe');
+$username = $this->ask('username (default: root)', 'QUESTION', 'root');
+$password = $this->ask('password (default: root)', 'QUESTION', 'root');
 $databasesYml = <<<EOF
 all:
   doctrine:
     class:        sfDoctrineDatabase
     param:
-      dsn:        mysql:dbname=apostrophe;host=127.0.0.1
-      username: root
-      password: root
+      dsn:      mysql:dbname=%DBNAME%;host=%HOST%
+      username: %USERNAME%
+      password: %PASSWORD%
       # You need these for non-latin character sets and full I18N
       encoding: utf8
       attributes:
@@ -156,9 +160,9 @@ test:
   doctrine:
     class:        sfDoctrineDatabase
     param:
-      dsn:        mysql:dbname=apostrophe_test;host=127.0.0.1
-      username: root
-      password: root
+      dsn:      mysql:dbname=%DBNAME%_test;host=%HOST%
+      username: %USERNAME%
+      password: %PASSWORD%
       # You need these for non-latin character sets and full I18N
       encoding: utf8
       attributes:
@@ -166,8 +170,18 @@ test:
         DEFAULT_TABLE_CHARSET: utf8
         DEFAULT_TABLE_COLLATE: utf8_general_ci
 EOF;
-file_put_contents(sfConfig::get('sf_config_dir') . '/databases.yml', $databasesYml);
-file_put_contents(sfConfig::get('sf_config_dir') . '/databases.yml.example', $databasesYml);
+file_put_contents(sfConfig::get('sf_config_dir') . '/databases.yml', strtr($databasesYml,array(
+    '%DBNAME%' => $dbname,
+    '%HOST%' => $host,
+    '%USERNAME%' => $username,
+    '%PASSWORD%' => $password,
+)));
+file_put_contents(sfConfig::get('sf_config_dir') . '/databases.yml.example', strtr($databasesYml,array(
+    '%DBNAME%' => $dbname,
+    '%HOST%' => $host,
+    '%USERNAME%' => 'root',
+    '%PASSWORD%' => 'root',
+)));
 $this->getFilesystem()->execute('git add .; git commit -m "Updated databases.yml"');
 
 /**
