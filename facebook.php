@@ -197,6 +197,9 @@ if ($this->askConfirmation('Would you like to setup the cap files? (default: yes
         sfConfig::get('sf_config_dir') . '/deploy/production.rb',
         sfConfig::get('sf_root_dir') . '/Capfile',
     ));
+
+    file_put_contents(sfConfig::get('sf_web_dir') . '/robots.txt.beta', "User-agent: *\nDisallow: /");
+
     $CapfileTmpl = <<<EOF
 load 'deploy' if respond_to?(:namespace) # cap2 differentiator
 Dir['plugins/*/lib/recipes/*.rb'].each { |plugin| load(plugin) }
