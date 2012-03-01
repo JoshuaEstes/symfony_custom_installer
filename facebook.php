@@ -31,27 +31,31 @@ $this->getFilesystem()->copy(sfConfig::get('sf_symfony_lib_dir') . '/exception/d
 $this->getFilesystem()->copy(sfConfig::get('sf_symfony_lib_dir') . '/exception/data/unavailable.php', sfConfig::get('sf_app_config_dir') . '/unavailable.php');
 
 /**
+ * Merge the current config yml files and the default yml files together
+ */
+$factoriesDefault = sfYaml::load(sfConfig::get('sf_symfony_lib_dir') . '/config/config/factories.yml');
+$factoriesDefault['all'] = $factoriesDefault['default'];
+unset($factoriesDefault['default']);
+$factories = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml');
+$factories = sfToolkit::arrayDeepMerge($factoriesDefault,$factories);
+
+$settingsDefault = sfYaml::load(sfConfig::get('sf_symfony_lib_dir') . '/config/config/settings.yml');
+$settingsDefault['all'] = $settingsDefault['default'];
+unset($settingsDefault['default']);
+$settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
+$settings = sfToolkit::arrayDeepMerge($settingsDefault,$settings);
+
+/**
  * Manipulate the settings.yml
  */
-$settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
-$settings['all']['.actions']['login_module'] = 'default';
-$settings['all']['.actions']['login_action'] = 'login';
-$settings['all']['.actions']['secure_module'] = 'default';
-$settings['all']['.actions']['secure_action'] = 'secure';
-$settings['all']['.actions']['error_404_module'] = 'default';
-$settings['all']['.actions']['error_404_action'] = 'error404';
-$settings['all']['.actions']['module_disabled_module'] = 'default';
-$settings['all']['.actions']['module_disabled_action'] = 'disabled';
 $settings['all']['.settings']['check_lock'] = true;
 $settings['prod']['.settings']['logging_enabled'] = true;
-file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 3));
+file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 5));
 
 /**
  * Manipulate factories.yml
  */
-$factories = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/factories.yml');
 $factories['all']['storage'] = array(
-  'class' => 'sfSessionStorage',
   'param' => array(
     'session_name' => 'sfFacebook'
   )
@@ -92,6 +96,7 @@ if ($this->askConfirmation('Do you need to use a database? (default: no)', 'QUES
 {
   if ($this->askConfirmation('Do you want to setup the database? (default: yes)'))
   {
+      // create a detault databases.yml and copy it over to databases.yml.example
       $this->runTask('configure:database', '"mysql:host=127.0.0.1;dbname=facebook_app" "root" "root"');
       $this->getFilesystem()->copy(sfConfig::get('sf_config_dir') . '/databases.yml', sfConfig::get('sf_config_dir') . '/databases.yml.example');
       $host = $this->ask('host (default: 127.0.0.1)', 'QUESTION', '127.0.0.1');
@@ -103,9 +108,10 @@ if ($this->askConfirmation('Do you need to use a database? (default: no)', 'QUES
 }
 else
 {
+  $this->logBlock('settings', 'use_database set to false');
   $settings = sfYaml::load(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml');
   $settings['all']['.settings']['use_database'] = false;
-  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 3));
+  file_put_contents(sfConfig::get('sf_apps_dir') . '/frontend/config/settings.yml', sfYaml::dump($settings, 5));
 }
 
 $this->getFilesystem()->execute('git add .; git commit -m "initial commit"');
@@ -177,15 +183,15 @@ if ($this->askConfirmation('Do you want to install Capistrano? (default: no)', '
 /**
  * Generate the capistrano stuff
  */
-if ($this->askConfirmation('Would you like to install the cap files? (default: yes)'))
+if ($this->askConfirmation('Would you like to setup the cap files? (default: yes)'))
 {
     $this->getFilesystem()->mkdirs(sfConfig::get('sf_config_dir') . '/deploy');
     $this->getFilesystem()->touch(array(
+        sfConfig::get('sf_web_dir') . '/robots.txt.beta',
+        sfConfig::get('sf_web_dir') . '/robots.txt.production',
         sfConfig::get('sf_config_dir') . '/app.yml',
         sfConfig::get('sf_config_dir') . '/app.yml.beta',
         sfConfig::get('sf_config_dir') . '/app.yml.production',
-        sfConfig::get('sf_config_dir') . '/web/robots.txt.beta',
-        sfConfig::get('sf_config_dir') . '/web/robots.txt.production',
         sfConfig::get('sf_config_dir') . '/deploy.rb',
         sfConfig::get('sf_config_dir') . '/deploy/beta.rb',
         sfConfig::get('sf_config_dir') . '/deploy/production.rb',
