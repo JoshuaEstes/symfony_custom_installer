@@ -122,7 +122,7 @@ $this->getFilesystem()->execute('git commit -m \'added facebook-php-sdk subbmodu
 if ($this->askConfirmation('Do you want to install npAssetsOptimizerPlugin? (default: yes)'))
 {
   $this->getFilesystem()->execute('git submodule add git://github.com/n1k0/npAssetsOptimizerPlugin.git plugins/npAssetsOptimizerPlugin');
-  sfSymfonyPluginManager::enablePlugin('sfErrorNotifierPlugin', sfConfig::get('sf_config_dir'));
+  sfSymfonyPluginManager::enablePlugin('npAssetsOptimizerPlugin', sfConfig::get('sf_config_dir'));
   $this->getFilesystem()->execute('git add. ;git commit -m \'added npAssetsOptimizerPlugin\'');
 }
 
