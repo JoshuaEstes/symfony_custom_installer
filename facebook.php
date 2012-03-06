@@ -203,7 +203,7 @@ if ($this->askConfirmation('Would you like to setup the cap files? (default: yes
     $CapfileTmpl = <<<EOF
 load 'deploy' if respond_to?(:namespace) # cap2 differentiator
 Dir['plugins/*/lib/recipes/*.rb'].each { |plugin| load(plugin) }
-load Gem.required_location('capifony', 'symfony1.rb')
+load Gem.find_files('symfony1.rb').last.to_s
 load 'config/deploy' # remove this line to skip loading any of the default tasks
 
 # Load in the multistage configuration and setup the stages
