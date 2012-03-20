@@ -262,7 +262,7 @@ EOF;
         $betaUser = $this->ask('Beta ssh username','QUESTION',false);
     }
     while(!$betaUser);
-    $betaBranch = $this->ask('Beta branch (default: deploy)','QUESTION','deploy');
+    $betaBranch = $this->ask('Beta branch (default: develop)','QUESTION','develop');
     $betaRb = strtr($betaTmpl,array(
       '%BETA_DOMAIN%' => $betaDomain,
       '%BETA_DEPLOY_TO%' => $betaDeployTo,
