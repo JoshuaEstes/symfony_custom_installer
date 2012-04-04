@@ -114,7 +114,7 @@ $source->save();
 /**
  * Download a .gitignore file
  */
-$this->getFilesystem()->execute(sprintf('wget https://raw.github.com/github/gitignore/master/Symfony.gitignore -O %s/.gitignore', sfConfig::get('sf_root_dir')));
+$this->getFilesystem()->execute(sprintf('wget --no-check-certificate https://raw.github.com/github/gitignore/master/Symfony.gitignore -O %s/.gitignore', sfConfig::get('sf_root_dir')));
 
 /**
  * Configure databases.yml and make a copy
